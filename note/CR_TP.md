@@ -170,13 +170,98 @@ db.touristPOI.aggregate([
 **Résultat (exemple) :**
 ```json
 {
-  "properties": {
-    "nom": "Gare Part-Dieu",
-    "type": "EQUIPEMENT",
-    "address": { "streetAddress": "5 Place Charles Béraudier" }
-  },
-  "stationsMemesRue": [{ "name": "Station Béraudier", "commune": "Lyon 3ème Arrondissement" }]
-}
+    properties: {
+      nom: 'Eurolines',
+      type: 'COMMERCE_ET_SERVICE',
+      address: { streetAddress: null }
+    },
+    stationsMemesRue: [
+      {
+        _id: ObjectId('69977d94118ba4e9946ec6f9'),
+        number: 555,
+        name: "0-555 - ATELIER VÉLO'V",
+        bonus: false,
+        bike_stands: 3,
+        available_bike_stands: 0,
+        available_bikes: 3,
+        availabilitycode: 2,
+        availability: 'Bleu',
+        status: 'OPEN',
+        banking: false,
+        lat: 45.780403,
+        lng: 4.904869,
+        gid: 206,
+        last_update: '2026-02-19T20:56:42.000+00:00',
+        last_update_fme: '2026-02-19T21:04:41.101+00:00',
+        overflow: false,
+        total_stands: {
+          capacity: 3,
+          availabilities: {
+            bikes: 3,
+            stands: 0,
+            electricalBikes: 2,
+            mechanicalBikes: 1,
+            electricalInternalBatteryBikes: 2,
+            electricalRemovableBatteryBikes: 0
+          }
+        },
+        main_stands: {
+          capacity: 3,
+          availabilities: {
+            bikes: 3,
+            stands: 0,
+            electricalBikes: 2,
+            mechanicalBikes: 1,
+            electricalInternalBatteryBikes: 2,
+            electricalRemovableBatteryBikes: 0
+          }
+        },
+        geometry: { type: 'Point', coordinates: [ 4.904869, 45.780403 ] }
+      },
+      {
+        _id: ObjectId('69977d94118ba4e9946ec7e5'),
+        number: 10037,
+        name: '10037 - DUPEUBLE / 8 MAI 1945',
+        address_jcd: '40 RUE MICHEL DUPEUBLE\n69100 VILLEURBANNE',
+        bonus: false,
+        bike_stands: 15,
+        available_bike_stands: 0,
+        available_bikes: 0,
+        availabilitycode: 0,
+        availability: 'Gris',
+        status: 'OPEN',
+        banking: false,
+        lat: 45.7760883668417,
+        lng: 4.89227468095863,
+        gid: 457,
+        last_update_fme: '2026-02-19T21:04:41.081+00:00',
+        overflow: false,
+        total_stands: {
+          capacity: 15,
+          availabilities: {
+            bikes: 0,
+            stands: 0,
+            electricalBikes: 0,
+            mechanicalBikes: 0,
+            electricalInternalBatteryBikes: 0,
+            electricalRemovableBatteryBikes: 0
+          }
+        },
+        main_stands: {
+          capacity: 15,
+          availabilities: {
+            bikes: 0,
+            stands: 0,
+            electricalBikes: 0,
+            mechanicalBikes: 0,
+            electricalInternalBatteryBikes: 0,
+            electricalRemovableBatteryBikes: 0
+          }
+        },
+        geometry: { type: 'Point', coordinates: [ 4.892275, 45.776088 ] }
+      }
+    ]
+  }
 ```
 
 ---
@@ -229,14 +314,25 @@ db.velov2026.aggregate([
 
 **Résultat (exemple) :**
 ```json
+
 {
-  "name": "Hôtel de Ville - Louis Pradel",
-  "commune": "Lyon 1er Arrondissement",
-  "poisProches": [
-    { "properties": { "nom": "Brasserie Georges", "type": "RESTAURATION" } },
-    { "properties": { "nom": "Opéra de Lyon", "type": "PATRIMOINE_CULTUREL" } }
+  _id: ObjectId('69977d94118ba4e9946ec6af'),
+  name: '1006- SUBSISTANCES',
+  commune: 'Lyon 1er Arrondissement',
+  poisProches: [
+    {
+      properties: { nom: 'Passerelle Saint Vincent', type: 'PATRIMOINE_CULTUREL' }
+    },
+    {
+      properties: {
+        nom: "Passerelle de l'Homme de la Roche",
+        type: 'PATRIMOINE_CULTUREL'
+      }
+    },
+    { properties: { nom: 'Salle Paul Garcin', type: 'EQUIPEMENT' } }
   ]
 }
+
 ```
 
 ---
