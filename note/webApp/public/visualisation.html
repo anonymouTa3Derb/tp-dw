@@ -88,7 +88,7 @@
                 : '<li><i>aucun</i></li>';
 
             marker.bindPopup(
-                `<b>${s.name}</b><br>${s.poiCount} POI à proximité<ul>${poisList}</ul>`
+                `<b>${s.name}</b><br>${s.poiCount} ${poiType} à proximité<ul>${poisList}</ul>`
             );
 
             markersLayer.addLayer(marker);
