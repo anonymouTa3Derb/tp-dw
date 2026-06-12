@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Vélov' & POI – Carte</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <style>
+        body { margin: 0; font-family: sans-serif; }
+        #controls { padding: 10px; background: #f4f4f4; display: flex; gap: 16px; align-items: center; }
+        #map { height: calc(100vh - 50px); }
+        #legend { position: absolute; bottom: 30px; right: 10px; z-index: 1000; background: white; padding: 8px 12px; border: 1px solid #ccc; font-size: 13px; }
+        #legend span { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <label>Type de POI :
+        <select id="poiType"></select>
+    </label>
+    <label>Rayon : <strong id="rangeVal">500</strong> m
+        <input type="range" id="range" min="100" max="2000" step="100" value="500">
+    </label>
+    <button id="btnLoad">Afficher</button>
+    <span id="status"></span>
+</div>
+
+<div id="map"></div>
+
+<div id="legend">
+    <b>Nb de POI à proximité</b><br>
+    <span style="background:#27ae60"></span> 5+<br>
+    <span style="background:#f39c12"></span> 2–4<br>
+    <span style="background:#e74c3c"></span> 1<br>
+    <span style="background:#999"></span> 0
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+    const map = L.map('map').setView([45.75, 4.85], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Couleur du marker selon le nombre de POI à proximité
+    function color(count) {
+        if (count === 0) return '#999';
+        if (count === 1) return '#e74c3c';
+        if (count <= 4) return '#f39c12';
+        return '#27ae60';
+    }
+
+    let markersLayer = L.layerGroup().addTo(map);
+
+    async function loadMap() {
+        const poiType = document.getElementById('poiType').value;
+        const range   = document.getElementById('range').value;
+        document.getElementById('status').textContent = 'Chargement...';
+
+        const stations = await fetch(`/api/map-data?poiType=${encodeURIComponent(poiType)}&range=${range}`)
+            .then(r => r.json());
+
+        markersLayer.clearLayers();
+
+        stations.forEach(s => {
+            if (!s.lat || !s.lng) return;
+
+            const marker = L.circleMarker([s.lat, s.lng], {
+                radius: 7,
+                fillColor: color(s.poiCount),
+                color: '#fff',
+                weight: 1,
+                fillOpacity: 0.85
+            });
+
+            // Popup : nom de la station + liste des POI trouvés
+            const poisList = s.pois.length
+                ? s.pois.map(p => `<li>${p.properties.nom}</li>`).join('')
+                : '<li><i>aucun</i></li>';
+
+            marker.bindPopup(
+                `<b>${s.name}</b><br>${s.poiCount} POI à proximité<ul>${poisList}</ul>`
+            );
+
+            markersLayer.addLayer(marker);
+        });
+
+        document.getElementById('status').textContent = `${stations.length} stations affichées`;
+    }
+
+    // Mise à jour de l'affichage de la valeur du slider en temps réel
+    document.getElementById('range').addEventListener('input', function() {
+        document.getElementById('rangeVal').textContent = this.value;
+    });
+
+    document.getElementById('btnLoad').addEventListener('click', loadMap);
+
+    // Initialisation : remplir le dropdown puis charger la carte
+    fetch('/api/poiTypes').then(r => r.json()).then(types => {
+        const sel = document.getElementById('poiType');
+        types.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = t;
+            sel.appendChild(opt);
+        });
+        loadMap();
+    });
+</script>
+
+</body>
+</html>
