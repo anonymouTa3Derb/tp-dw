@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Vélov' & Points d'intérêt - Lyon</title>
+</head>
+<body>
+
+<h1>Stations Vélov' et Points d'intérêt à proximité</h1>
+
+<!-- Filtres : commune, type de POI, distance (question 3.3) -->
+<div>
+    <label>Commune :
+        <select id="commune"><option>Chargement...</option></select>
+    </label>
+
+    <label>Type de POI :
+        <select id="poiType"><option>Chargement...</option></select>
+    </label>
+
+    <label>Distance : <strong id="rangeVal">500</strong> m
+        <input type="range" id="range" min="0" max="1000" value="500"
+               oninput="document.getElementById('rangeVal').textContent = this.value">
+    </label>
+
+    <button onclick="search()">Rechercher</button>
+</div>
+
+<hr>
+<div id="results"></div>
+
+<script>
+    // Initialise les deux dropdowns en parallèle au chargement
+    async function init() {
+        const [communes, types] = await Promise.all([
+            fetch('/api/communes').then(r => r.json()),
+            fetch('/api/poiTypes').then(r => r.json())
+        ]);
+
+        fillSelect('commune', communes);
+        fillSelect('poiType', types);
+    }
+
+    function fillSelect(id, items) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        items.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = v;
+            sel.appendChild(opt);
+        });
+    }
+
+    // Appelle la route /api/search et construit le tableau de résultats
+    async function search() {
+        const commune = document.getElementById('commune').value;
+        const poiType = document.getElementById('poiType').value;
+        const range   = document.getElementById('range').value;
+
+        document.getElementById('results').innerHTML = 'Recherche en cours...';
+
+        const data = await fetch(
+            `/api/search?commune=${encodeURIComponent(commune)}&poiType=${encodeURIComponent(poiType)}&range=${range}`
+        ).then(r => r.json());
+
+        const div = document.getElementById('results');
+
+        if (!data.length) {
+            div.innerHTML = '<p>Aucune station avec des POI à proximité pour ces critères.</p>';
+            return;
+        }
+
+        // Tableau principal : une ligne par station Vélov'
+        let html = `<p>${data.length} station(s) trouvée(s)</p>
+        <table border="1" cellpadding="4">
+            <tr>
+                <th>Station Vélov'</th>
+                <th>Adresse</th>
+                <th>Points d'intérêt à proximité</th>
+            </tr>`;
+
+        for (const station of data) {
+            // Sous-tableau des POI pour cette station
+            const poiRows = station.pois.map(p => {
+                const themes = (p.theme || []).join(', ') || '-';
+                const addr   = (p.address && p.address.streetAddress) ? p.address.streetAddress : '-';
+                return `<tr>
+                    <td>${p.nom || '-'}</td>
+                    <td>${themes}</td>
+                    <td>${addr}</td>
+                </tr>`;
+            }).join('');
+
+            const subTable = `<table border="1" cellpadding="2">
+                <tr><th>Nom</th><th>Thème(s)</th><th>Adresse</th></tr>
+                ${poiRows}
+            </table>`;
+
+            html += `<tr>
+                <td>${station.name}</td>
+                <td>${station.address || '-'}</td>
+                <td>${subTable}</td>
+            </tr>`;
+        }
+
+        html += '</table>';
+        div.innerHTML = html;
+    }
+
+    init();
+</script>
+
+</body>
+</html>
