@@ -119,7 +119,7 @@ app.get("/api/map-data", async (req, res) => {
                                 }
                             }
                         },
-                        { $project: { _id: 0, "properties.nom": 1 } }
+                        { $project: { _id: 0, "properties.nom": 1, "geometry.coordinates": 1 } }
                     ],
                     as: "pois"
                 }

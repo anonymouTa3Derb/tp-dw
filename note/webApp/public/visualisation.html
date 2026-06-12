@@ -52,6 +52,38 @@
     }
 
     let markersLayer = L.layerGroup().addTo(map);
+    // Layer temporaire pour afficher les POI au survol d'une station
+    let hoverLayer = L.layerGroup().addTo(map);
+
+    function clearHover() {
+        hoverLayer.clearLayers();
+    }
+
+    function showHover(s, range) {
+        hoverLayer.clearLayers();
+
+        // Cercle matérialisant le rayon de recherche autour de la station
+        L.circle([s.lat, s.lng], {
+            radius: parseInt(range),
+            color: '#4363d8',
+            weight: 1.5,
+            fillOpacity: 0.05,
+            dashArray: '5 5'
+        }).addTo(hoverLayer);
+
+        // Un point bleu pour chaque POI à proximité
+        s.pois.forEach(p => {
+            if (!p.geometry || !p.geometry.coordinates) return;
+            const [lng, lat] = p.geometry.coordinates; // GeoJSON = [lng, lat]
+            L.circleMarker([lat, lng], {
+                radius: 5,
+                fillColor: '#4363d8',
+                color: '#fff',
+                weight: 1,
+                fillOpacity: 0.9
+            }).bindTooltip(p.properties.nom, { permanent: false }).addTo(hoverLayer);
+        });
+    }
 
     async function loadMap() {
         const poiType = document.getElementById('poiType').value;
@@ -70,6 +102,7 @@
         }
 
         markersLayer.clearLayers();
+        clearHover();
 
         stations.forEach(s => {
             if (!s.lat || !s.lng) return;
@@ -82,7 +115,11 @@
                 fillOpacity: 0.85
             });
 
-            // Popup : nom de la station + liste des POI trouvés
+            // Survol : affiche le cercle de rayon + les POI autour
+            marker.on('mouseover', () => showHover(s, range));
+            marker.on('mouseout',  () => clearHover());
+
+            // Popup au clic : nom de la station + liste des POI
             const poisList = s.pois.length
                 ? s.pois.map(p => `<li>${p.properties.nom}</li>`).join('')
                 : '<li><i>aucun</i></li>';
