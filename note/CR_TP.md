@@ -45,14 +45,17 @@ db.touristPOI.distinct("properties.type")
 **Résultats obtenus :**
 ```
 [
-  "COMMERCE_ET_SERVICE",
-  "EQUIPEMENT",
-  "FETE_ET_MANIFESTATION",
-  "HEBERGEMENT_COLLECTIF",
-  "HEBERGEMENT_LOCATIF",
-  "PATRIMOINE_CULTUREL",
-  "PATRIMOINE_NATUREL",
-  "RESTAURATION"
+  'ACTIVITE',
+  'COMMERCE_ET_SERVICE',
+  'DEGUSTATION',
+  'EQUIPEMENT',
+  'FETE_ET_MANIFESTATION',
+  'HEBERGEMENT_COLLECTIF',
+  'HEBERGEMENT_LOCATIF',
+  'HOTELLERIE',
+  'HOTELLERIE_PLEIN_AIR',
+  'PATRIMOINE_CULTUREL',
+  'RESTAURATION'
 ]
 ```
 
@@ -65,6 +68,7 @@ db.touristPOI.distinct("properties.type")
 **Requête MongoDB :**
 ```js
 db.touristPOI.aggregate([
+  { $match: { "properties.theme": { $exists: true } } },
   { $unwind: "$properties.theme" },
   {
     $group: {
@@ -72,19 +76,66 @@ db.touristPOI.aggregate([
       distinctThemes: { $addToSet: "$properties.theme" }
     }
   },
-  { $addFields: { themeCount: { $size: "$distinctThemes" } } },
-  { $sort: { themeCount: -1 } }
+  {
+    $project: {
+      distinctThemes: 1,
+      themeCount: { $size: "$distinctThemes" }
+    }
+  },
+  { $sort: { themeCount: -1 } },
+  { $limit : 5 }
 ])
 ```
 
 **5 premiers résultats (exemple) :**
 ```
-1. RESTAURATION         → thèmes : "Restaurants & Gastronomie", "Cuisine du monde", ...
-2. COMMERCE_ET_SERVICE  → thèmes : "Lyon Pratique", "Transports", ...
-3. PATRIMOINE_CULTUREL  → thèmes : "Musées", "Architecture", ...
-4. HEBERGEMENT_LOCATIF  → thèmes : ...
-5. EQUIPEMENT           → thèmes : ...
+[
+  {
+    _id: 'COMMERCE_ET_SERVICE',
+    distinctThemes: [
+      'Hébergements',
+      'Culture & Musées',
+      'Lyon Pratique',
+      'Restaurants & Gastronomie',
+      'Activités, Loisirs et Bien-être',
+      'Shopping'
+    ],
+    themeCount: 6
+  },
+  {
+    _id: 'EQUIPEMENT',
+    distinctThemes: [
+      'Culture & Musées',
+      'Nocturne',
+      'Activités, Loisirs et Bien-être',
+      'Lieux de spectacles',
+      'Lyon Pratique',
+      'Restaurants & Gastronomie'
+    ],
+    themeCount: 6
+  },
+  {
+    _id: 'PATRIMOINE_CULTUREL',
+    distinctThemes: [
+      'Patrimoine - Unesco',
+      'Activités, Loisirs et Bien-être',
+      'Culture & Musées'
+    ],
+    themeCount: 3
+  },
+  {
+    _id: 'ACTIVITE',
+    distinctThemes: [ 'Lyon Pratique', 'Agenda', 'Activités, Loisirs et Bien-être' ],
+    themeCount: 3
+  },
+  {
+    _id: 'RESTAURATION',
+    distinctThemes: [ 'Restaurants & Gastronomie', 'Nocturne' ],
+    themeCount: 2
+  }
+]
 ```
+
 
 ---
 
