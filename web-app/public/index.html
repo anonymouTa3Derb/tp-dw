@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+
+    const BASE_URL = "http://localhost:3000";
+
+    async function loadAllStations() {
+        
+        const url = BASE_URL+"/api/stations";
+        
+        try {
+            const res = await fetch(url);
+            allStations = await res.json();
+            renderStations(allStations);
+        } catch (e) { console.error("station load", e); }
+    }
+
+    async function getCommunes()
+    {
+        const url = BASE_URL+"/api/communes";
+        
+        try {
+            const res = await fetch(url);
+            const communes = await res.json();
+            const selectElement = document.getElementById("communeSelected");
+            communes.forEach(commune => {
+                const optionElement = document.createElement("option");
+                optionElement.value = commune;
+                optionElement.textContent = commune;
+                selectElement.appendChild(optionElement);
+            });
+        } catch (e) { console.error("commune load", e); }
+    }
+
+     async function searchStationsWithStatus() {
+
+            const selectedStatus = document.getElementById("statusSelect").value;
+
+            const url = BASE_URL+`/api/status_filtered_stations?status=${selectedStatus}`;
+
+            try {
+                const res = await fetch(url);
+                const stations = await res.json();
+                renderStations(stations);
+            } catch (e) {
+                console.error("Station load error", e);
+            }
+    }
+
+    async function searchStationsWithCommune() {
+
+            const selectedCommune = document.getElementById("communeSelected").value;
+            console.log("Selected commune:", selectedCommune); 
+            const url = BASE_URL+`/api/status_filtered_stations?commune=${selectedCommune}`;
+
+            try {
+                const res = await fetch(url);
+                const stations = await res.json();
+                console.log("Stations received:", stations);
+                renderStations(stations);
+            } catch (e) {
+                console.error("Station load error", e);
+            }
+    }
+
+    async function clickableSVG()
+    {
+        let svg = document.getElementById('svgContainer').querySelector('svg');
+        let glyon = svg.querySelector('#lyon_districts');
+        let paths = glyon.querySelectorAll('path').forEach((path) => {
+            path.addEventListener('click', async () => {
+                let pathId = path.id + "e Arrondissement";
+                const url = BASE_URL+`/api/svg_filtered_stations?commune=${pathId}`;
+                try {
+                    const res = await fetch(url);
+                    const stations = await res.json();
+                    renderStations(stations);
+                } catch (e) {
+                    console.error("Station load error", e);
+                }
+                //document.getElementById("textArea").value =`clicked on ${path.id}`;
+            },
+            path.onmouseover = async () => { 
+                path.style.fill = "red";
+                try
+                {
+                    let pathId = path.id + "e Arrondissement";
+                    console.log("Fetching stats for:", pathId);
+                    const res = await fetch(BASE_URL+`/api/stats_stations?commune=${pathId}`);
+                    const stats = await res.json();
+                    renderStats(stats);
+                }
+                catch (e) { console.error("Stats load error", e); }
+            },
+            path.onmouseout = () => { 
+                path.style.fill = "white"; 
+                clearStats();
+            }
+        
+        )});
+    }
+
+    function renderStats(stats)
+    {
+        const statsElem = document.getElementById("statsStations");
+        statsElem.textContent = `Name of the district: ${stats.name} | Total number of velov: ${stats.total} | Average number of velov: ${stats.average}`;
+    }
+
+    function clearStats()
+    {
+        const statsElem = document.getElementById("statsStations");
+        statsElem.textContent = "";
+    }
+
+    function renderStations(data) {
+        
+        const listElement = document.getElementById("stationNemList");
+        listElement.innerHTML = ""; // Clear previous results
+
+        data.forEach(station => {
+            //create a text node with the station name
+            const textNode = document.createTextNode(station.name + "-" + station.commune)
+            const listItem = document.createElement("li");
+            listItem.appendChild(textNode);
+            listElement.appendChild(listItem);
+           
+        });        
+    }
+
+    async function fetchSvgContent(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+        return await response.text();
+        } catch (error) {
+            console.error("Error fetching the SVG:", error);
+            return null;
+        }
+    }
+
+    async function initializeMap() {
+        const svgData = await fetchSvgContent('districts.svg');
+        if (svgData) {
+            const container = document.getElementById("svgContainer");
+            container.innerHTML = svgData;        
+        }
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+    getCommunes();
+    await initializeMap();
+    clickableSVG();
+});
+</script>
+</head>
+
+<body>
+    <h1>The station names by status</h1> 
+    <select id="statusSelect">
+        <option value="OPEN">OPEN</option>
+        <option value="CLOSED">CLOSED</option>
+    </select> <button onclick="searchStationsWithStatus()">Search</button>
+
+    <select id="communeSelected">
+    </select> <button onclick="searchStationsWithCommune()">Search by commune</button>
+
+
+    <svg id="svgContainer" height="500", width="500"></svg>
+
+    <p id="statsStations"></p>
+
+
+    <ul id="stationNemList">
+    </ul>
+
+
+</body>
+
+</html>
