@@ -87,7 +87,7 @@ db.touristPOI.aggregate([
 ])
 ```
 
-**5 premiers résultats (exemple) :**
+**5 premiers résultats (on a rajouté un champ qui permet de voir quels sont les thèmes distincts pour vérifier que le compte est bon ) :**
 ```
 [
   {
@@ -141,7 +141,7 @@ db.touristPOI.aggregate([
 
 ## Question 2.1 – $lookup par comparaison d'adresse
 
-On joint les deux collections sur l'adresse : `properties.address.streetAddress` côté POI contre le champ `address` des stations Vélov'. Les correspondances exactes restent rares (formats différents), mais le résultat montre que le mécanisme fonctionne.
+On joint les deux collections sur l'adresse : `properties.address.streetAddress` côté POI avec `address` des stations Vélov'. Les correspondances exactes restent rares (formats différents), mais le résultat montre que le mécanisme fonctionne.
 
 **Requête MongoDB :**
 ```js
@@ -270,12 +270,12 @@ db.touristPOI.aggregate([
 
 On crée d'abord un index `2dsphere` sur `touristPOI.geometry`. La distance entre chaque station Vélov' et les POI est calculée dans le pipeline du `$lookup` via une approximation planaire (1°lat ≈ 111 000 m, 1°lng ≈ 77 000 m à la latitude de Lyon), ce qui est suffisamment précis à cette échelle.
 
-**Création de l'index :**
+**Pour l'index :**
 ```js
 db.touristPOI.createIndex({ "geometry": "2dsphere" })
 ```
 
-**Requête MongoDB :**
+**Lookup :**
 ```js
 db.velov2026.aggregate([
   { $match: { commune: "Lyon 1er Arrondissement" } },
@@ -406,7 +406,7 @@ npm install
 node server.js
 # Ouvrir http://localhost:3000
 ```
-> **Prérequis :** MongoDB en cours d'exécution avec `touristPOI` et `velov2026` dans `20263IFMongoLab`.
+> **Prérequis :** MongoDB en cours d'exécution avec `touristPOI` et `velov2026` dans `20263IFMongoLab` et être sûr d'avoir fait `use 20263IFMongoLab` .
 
 ---
 
