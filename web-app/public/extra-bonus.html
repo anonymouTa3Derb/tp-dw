@@ -72,6 +72,8 @@
             .range([4, 20]);
 
         // Simulation de forces : attire les noeuds connectés, repousse les autres
+        //fonction prise d'internet
+
         const sim = d3.forceSimulation(nodes)
             .force("link",    d3.forceLink(links).id(d => d.id).distance(80))
             .force("charge",  d3.forceManyBody().strength(-60))
@@ -119,6 +121,7 @@
                 });
 
         // Mise à jour des positions à chaque tick de la simulation
+        // prise d'internet
         sim.on("tick", () => {
             link
                 .attr("x1", d => d.source.x)
