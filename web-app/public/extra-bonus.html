@@ -72,8 +72,6 @@
             .range([4, 20]);
 
         // Simulation de forces : attire les noeuds connectés, repousse les autres
-        //fonction prise d'internet
-
         const sim = d3.forceSimulation(nodes)
             .force("link",    d3.forceLink(links).id(d => d.id).distance(80))
             .force("charge",  d3.forceManyBody().strength(-60))
@@ -88,24 +86,22 @@
                 .attr("stroke", "#aaa")
                 .attr("stroke-width", d => Math.sqrt(d.value));
 
-        // Dessin des noeuds (cercles colorés, draggables)
+        // On groupe cercle + étiquette dans un <g> par noeud
+        // Cela permet de déplacer les deux ensemble lors du drag
         const node = svg.append("g")
-            .selectAll("circle")
+            .selectAll("g")
             .data(nodes)
-            .enter().append("circle")
-                .attr("r",      d => rScale(d.total))
-                .attr("fill",   d => COLORS[d.name])
-                .attr("stroke", "#fff")
-                .attr("stroke-width", 1)
-                // Drag : l'utilisateur peut déplacer les noeuds
+            .enter().append("g")
+                // Drag : quand on relâche le noeud, on ne remet PAS fx/fy à null.
+                // Le noeud reste donc épinglé à l'endroit où on l'a posé.
+                // La simulation continue d'attirer les autres noeuds autour de lui.
                 .call(d3.drag()
                     .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
                     .on("drag",  (e, d) => { d.fx = e.x; d.fy = e.y; })
-                    .on("end",   (e, d) => { if (!e.active) sim.alphaTarget(0); d.fx = null; d.fy = null; })
+                    .on("end",   (e, d) => { if (!e.active) sim.alphaTarget(0); })
+                    // on ne touche plus à d.fx / d.fy -> le noeud reste fixé
                 )
-                // Survol : affiche le nom et le total dans le <p id="info">
                 .on("mouseover", (e, d) => {
-                    // Top 3 partenaires de ce domaine
                     const top3 = matrix[d.id]
                         .map((v, j) => ({ name: domains[j], v }))
                         .filter(p => p.v > 0 && p.name !== d.name)
@@ -120,17 +116,34 @@
                     document.getElementById("info").textContent = "Survolez un noeud pour voir les détails";
                 });
 
-        // Mise à jour des positions à chaque tick de la simulation
-        // prise d'internet
+        // Cercle coloré dans chaque groupe
+        node.append("circle")
+            .attr("r",            d => rScale(d.total))
+            .attr("fill",         d => COLORS[d.name])
+            .attr("stroke",       "#fff")
+            .attr("stroke-width", 1);
+
+        // Étiquette texte à droite du cercle, affiche le nom complet du domaine.
+        // x = rayon + 3px pour coller juste après le bord du cercle.
+        // pointer-events: none -> le texte ne capte pas les événements souris,
+        // ce qui évite que l'étiquette bloque le survol du cercle.
+        node.append("text")
+            .attr("x",               d => rScale(d.total) + 3)
+            .attr("y",               "0.35em")
+            .style("font-size",      "9px")
+            .style("pointer-events", "none")
+            .text(d => d.name);
+
+        // Mise à jour des positions à chaque tick de la simulation.
+        // On translate le groupe entier -> cercle et étiquette bougent ensemble.
         sim.on("tick", () => {
             link
                 .attr("x1", d => d.source.x)
                 .attr("y1", d => d.source.y)
                 .attr("x2", d => d.target.x)
                 .attr("y2", d => d.target.y);
-            node
-                .attr("cx", d => d.x)
-                .attr("cy", d => d.y);
+
+            node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
         });
     }
 
