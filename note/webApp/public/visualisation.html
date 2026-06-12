@@ -62,16 +62,17 @@
     function showHover(s, range) {
         hoverLayer.clearLayers();
 
-        // Cercle matérialisant le rayon de recherche autour de la station
+        // Cercle de rayon : interactive:false pour ne pas bloquer les clics sur la station
         L.circle([s.lat, s.lng], {
             radius: parseInt(range),
             color: '#4363d8',
             weight: 1.5,
             fillOpacity: 0.05,
-            dashArray: '5 5'
+            dashArray: '5 5',
+            interactive: false
         }).addTo(hoverLayer);
 
-        // Un point bleu pour chaque POI à proximité
+        // Un point bleu par POI à proximité, avec son nom en tooltip
         s.pois.forEach(p => {
             if (!p.geometry || !p.geometry.coordinates) return;
             const [lng, lat] = p.geometry.coordinates; // GeoJSON = [lng, lat]
