@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bonus - Carte Vélo'v</title>
+
+    <!-- Leaflet.js : bibliothèque de cartographie interactive -->
+    <link  rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+    <!-- La carte doit occuper toute la fenêtre -->
+    <style>
+        body { margin: 0; }
+        #map { width: 100vw; height: 100vh; }
+    </style>
+</head>
+<body>
+
+<div id="map"></div>
+
+<script>
+    // Initialisation de la carte Leaflet centrée sur Lyon
+    // Le deuxième argument est le niveau de zoom initial (13 = vue quartier)
+    const map = L.map("map").setView([45.75, 4.85], 13);
+
+    // Fond de carte OpenStreetMap (tuiles gratuites)
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        attribution: "© OpenStreetMap contributors"
+    }).addTo(map);
+
+    // Détermine la couleur d'un marqueur selon le taux de remplissage
+    // vert  = > 50% de vélos dispo
+    // orange = entre 1 et 50%
+    // rouge  = 0 vélo dispo ou station fermée
+    function getColor(station) {
+        if (station.status !== "OPEN") return "gray";
+        if (station.fillRate > 50)    return "green";
+        if (station.fillRate > 0)     return "orange";
+        return "red";
+    }
+
+    // Charge les stations depuis notre API Express et place les marqueurs
+    async function loadStations() {
+        const res      = await fetch("/api/stations");
+        const stations = await res.json();
+
+        stations.forEach(station => {
+            // On crée un cercle coloré à la position GPS de la station
+            const marker = L.circleMarker([station.lat, station.lng], {
+                radius:      8,
+                color:       getColor(station),
+                fillColor:   getColor(station),
+                fillOpacity: 0.8
+            }).addTo(map);
+
+            // Popup au clic : nom, adresse, disponibilité, taux de remplissage
+            marker.bindPopup(
+                "<b>" + station.name + "</b><br>" +
+                station.address + "<br>" +
+                "Vélos dispo : " + station.available_bikes + " / " + station.bike_stands + "<br>" +
+                "Taux : " + station.fillRate.toFixed(1) + "%" + "<br>" +
+                "Statut : " + station.status
+            );
+        });
+    }
+
+    // Légende fixe en bas à droite
+    const legend = L.control({ position: "bottomright" });
+    legend.onAdd = function () {
+        const div = L.DomUtil.create("div");
+        div.style.background = "white";
+        div.style.padding = "8px";
+        div.style.lineHeight = "1.8";
+        div.innerHTML =
+            "<b>Disponibilité</b><br>" +
+            "<span style='color:green'>●</span> > 50 %<br>" +
+            "<span style='color:orange'>●</span> 1 – 50 %<br>" +
+            "<span style='color:red'>●</span> 0 vélo<br>" +
+            "<span style='color:gray'>●</span> Fermée";
+        return div;
+    };
+    legend.addTo(map);
+
+    // Lancement au chargement de la page
+    document.addEventListener("DOMContentLoaded", loadStations);
+</script>
+
+</body>
+</html>
