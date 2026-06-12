@@ -56,10 +56,18 @@
     async function loadMap() {
         const poiType = document.getElementById('poiType').value;
         const range   = document.getElementById('range').value;
+        if (!poiType) return;
         document.getElementById('status').textContent = 'Chargement...';
 
-        const stations = await fetch(`/api/map-data?poiType=${encodeURIComponent(poiType)}&range=${range}`)
-            .then(r => r.json());
+        let stations;
+        try {
+            const r = await fetch(`/api/map-data?poiType=${encodeURIComponent(poiType)}&range=${range}`);
+            stations = await r.json();
+            if (!Array.isArray(stations)) throw new Error(stations.error || 'Réponse invalide');
+        } catch (err) {
+            document.getElementById('status').textContent = 'Erreur : ' + err.message;
+            return;
+        }
 
         markersLayer.clearLayers();
 
