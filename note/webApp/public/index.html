@@ -1,154 +1,113 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Extra Bonus - Réseau de collaborations</title>
+    <title>Vélov' & Points d'intérêt - Lyon</title>
 </head>
 <body>
 
-<h1>Réseau de collaborations scientifiques</h1>
+<h1>Stations Vélov' et Points d'intérêt à proximité</h1>
 
-<!-- Zone d'info au survol -->
-<p id="info">Survolez un noeud pour voir les détails</p>
+<!-- Filtres : commune, type de POI, distance (question 3.3) -->
+<div>
+    <label>Commune :
+        <select id="commune"><option>Chargement...</option></select>
+    </label>
 
-<!-- Le SVG du graphe force-dirigé -->
-<svg id="graph" width="900" height="600" style="border: 1px solid black"></svg>
+    <label>Type de POI :
+        <select id="poiType"><option>Chargement...</option></select>
+    </label>
 
-<!-- D3.js pour la simulation de forces et le dessin SVG -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <label>Distance : <strong id="rangeVal">500</strong> m
+        <input type="range" id="range" min="0" max="1000" value="500"
+               oninput="document.getElementById('rangeVal').textContent = this.value">
+    </label>
+
+    <button onclick="search()">Rechercher</button>
+</div>
+
+<hr>
+<div id="results"></div>
 
 <script>
-    // Couleur prédéfinie par domaine : chaque domaine a une couleur fixe dans ce dictionnaire.
-    // C'est la méthode pour imposer des couleurs fixes aux chords d'un chord diagram :
-    // au lieu de color(i) qui dépend de l'ordre, on fait COLORS[domains[d.index]].
-    const PALETTE = [
-        "#e6194b","#3cb44b","#ffe119","#4363d8","#f58231","#911eb4","#42d4f4",
-        "#f032e6","#bfef45","#469990","#9a6324","#800000","#aaffc3","#4a90e2",
-        "#d0021b","#7ed321","#9b59b6","#1abc9c","#e67e22","#e74c3c","#f39c12",
-        "#27ae60","#8e44ad","#16a085","#d35400","#c0392b","#2980b9","#1a5276",
-        "#a9a9a9","#808000","#000075","#ffd8b1","#fabebe","#e6beff","#fffac8",
-        "#95a5a6","#2ecc71","#3498db"
-    ];
+    // Initialise les deux dropdowns en parallèle au chargement
+    async function init() {
+        const [communes, types] = await Promise.all([
+            fetch('/api/communes').then(r => r.json()),
+            fetch('/api/poiTypes').then(r => r.json())
+        ]);
 
-    async function loadData() {
-        // On charge le fichier matrix.json depuis le dossier public
-        const res = await fetch('/matrix.json');
-        const data = await res.json();
-        drawGraph(data);
+        fillSelect('commune', communes);
+        fillSelect('poiType', types);
     }
 
-    function drawGraph(data) {
-        const domains = data.domains;
-        const matrix  = data.matrix;
-
-        // On construit le dictionnaire couleur : nom du domaine -> couleur hex
-        const COLORS = {};
-        domains.forEach((name, i) => { COLORS[name] = PALETTE[i]; });
-
-        // Noeuds : un objet par domaine avec son nom et son total de collaborations
-        const nodes = domains.map((name, i) => ({
-            id:    i,
-            name:  name,
-            total: matrix[i].reduce((s, v) => s + v, 0)
-        }));
-
-        // Liens : toutes les paires (i < j) avec au moins 1 projet en commun
-        const links = [];
-        domains.forEach((_, i) => {
-            domains.forEach((_, j) => {
-                if (i < j && matrix[i][j] > 0) {
-                    links.push({ source: i, target: j, value: matrix[i][j] });
-                }
-            });
-        });
-
-        const svg = d3.select("#graph");
-        const W = +svg.attr("width");
-        const H = +svg.attr("height");
-
-        // Echelle de rayon : les noeuds très connectés sont plus grands
-        const rScale = d3.scaleSqrt()
-            .domain([0, d3.max(nodes, n => n.total)])
-            .range([4, 20]);
-
-        // Simulation de forces : attire les noeuds connectés, repousse les autres
-        const sim = d3.forceSimulation(nodes)
-            .force("link",    d3.forceLink(links).id(d => d.id).distance(80))
-            .force("charge",  d3.forceManyBody().strength(-60))
-            .force("center",  d3.forceCenter(W / 2, H / 2))
-            .force("collide", d3.forceCollide(d => rScale(d.total) + 3));
-
-        // Dessin des liens (lignes grises, épaisseur = nombre de projets communs)
-        const link = svg.append("g")
-            .selectAll("line")
-            .data(links)
-            .enter().append("line")
-                .attr("stroke", "#aaa")
-                .attr("stroke-width", d => Math.sqrt(d.value));
-
-        // On groupe cercle + étiquette dans un <g> par noeud
-        // Cela permet de déplacer les deux ensemble lors du drag
-        const node = svg.append("g")
-            .selectAll("g")
-            .data(nodes)
-            .enter().append("g")
-                // Drag : quand on relâche le noeud, on ne remet PAS fx/fy à null.
-                // Le noeud reste donc épinglé à l'endroit où on l'a posé.
-                // La simulation continue d'attirer les autres noeuds autour de lui.
-                .call(d3.drag()
-                    .on("start", (e, d) => { if (!e.active) sim.alphaTarget(0.3).restart(); d.fx = d.x; d.fy = d.y; })
-                    .on("drag",  (e, d) => { d.fx = e.x; d.fy = e.y; })
-                    .on("end",   (e, d) => { if (!e.active) sim.alphaTarget(0); })
-                    // on ne touche plus à d.fx / d.fy -> le noeud reste fixé
-                )
-                .on("mouseover", (e, d) => {
-                    const top3 = matrix[d.id]
-                        .map((v, j) => ({ name: domains[j], v }))
-                        .filter(p => p.v > 0 && p.name !== d.name)
-                        .sort((a, b) => b.v - a.v)
-                        .slice(0, 3)
-                        .map(p => p.name + " (" + p.v + ")")
-                        .join(", ");
-                    document.getElementById("info").innerHTML =
-                        "<b>" + d.name + "</b> — " + d.total + " collab. | Top 3 : " + top3;
-                })
-                .on("mouseout", () => {
-                    document.getElementById("info").textContent = "Survolez un noeud pour voir les détails";
-                });
-
-        // Cercle coloré dans chaque groupe
-        node.append("circle")
-            .attr("r",            d => rScale(d.total))
-            .attr("fill",         d => COLORS[d.name])
-            .attr("stroke",       "#fff")
-            .attr("stroke-width", 1);
-
-        // Étiquette texte à droite du cercle, affiche le nom complet du domaine.
-        // x = rayon + 3px pour coller juste après le bord du cercle.
-        // pointer-events: none -> le texte ne capte pas les événements souris,
-        // ce qui évite que l'étiquette bloque le survol du cercle.
-        node.append("text")
-            .attr("x",               d => rScale(d.total) + 3)
-            .attr("y",               "0.35em")
-            .style("font-size",      "9px")
-            .style("pointer-events", "none")
-            .text(d => d.name);
-
-        // Mise à jour des positions à chaque tick de la simulation.
-        // On translate le groupe entier -> cercle et étiquette bougent ensemble.
-        sim.on("tick", () => {
-            link
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
-
-            node.attr("transform", d => "translate(" + d.x + "," + d.y + ")");
+    function fillSelect(id, items) {
+        const sel = document.getElementById(id);
+        sel.innerHTML = '';
+        items.forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = opt.textContent = v;
+            sel.appendChild(opt);
         });
     }
 
-    // Chargement des données au démarrage (même pattern que le reste du projet)
-    document.addEventListener("DOMContentLoaded", loadData);
+    // Appelle la route /api/search et construit le tableau de résultats
+    async function search() {
+        const commune = document.getElementById('commune').value;
+        const poiType = document.getElementById('poiType').value;
+        const range   = document.getElementById('range').value;
+
+        document.getElementById('results').innerHTML = 'Recherche en cours...';
+
+        const data = await fetch(
+            `/api/search?commune=${encodeURIComponent(commune)}&poiType=${encodeURIComponent(poiType)}&range=${range}`
+        ).then(r => r.json());
+
+        const div = document.getElementById('results');
+
+        if (!data.length) {
+            div.innerHTML = '<p>Aucune station avec des POI à proximité pour ces critères.</p>';
+            return;
+        }
+
+        // Tableau principal : une ligne par station Vélov'
+        let html = `<p>${data.length} station(s) trouvée(s)</p>
+        <table border="1" cellpadding="4">
+            <tr>
+                <th>Station Vélov'</th>
+                <th>Adresse</th>
+                <th>Points d'intérêt à proximité</th>
+            </tr>`;
+
+        for (const station of data) {
+            // Sous-tableau des POI pour cette station
+            const poiRows = station.pois.map(p => {
+                const themes = (p.theme || []).join(', ') || '-';
+                const addr   = (p.address && p.address.streetAddress) ? p.address.streetAddress : '-';
+                return `<tr>
+                    <td>${p.nom || '-'}</td>
+                    <td>${themes}</td>
+                    <td>${addr}</td>
+                </tr>`;
+            }).join('');
+
+            const subTable = `<table border="1" cellpadding="2">
+                <tr><th>Nom</th><th>Thème(s)</th><th>Adresse</th></tr>
+                ${poiRows}
+            </table>`;
+
+            html += `<tr>
+                <td>${station.name}</td>
+                <td>${station.address || '-'}</td>
+                <td>${subTable}</td>
+            </tr>`;
+        }
+
+        html += '</table>';
+        div.innerHTML = html;
+    }
+
+    init();
 </script>
 
 </body>
