@@ -25,7 +25,7 @@ app.get("/api/communes", async (req, res) => {
 // Liste unique des types de POI (pour le 2e dropdown - question 3.2)
 app.get("/api/poiTypes", async (req, res) => {
     try {
-        const types = await getDb().collection("touristPOI").distinct("type");
+        const types = await getDb().collection("touristPOI").distinct("properties.type");
         res.json(types.filter(Boolean).sort());
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -52,7 +52,7 @@ app.get("/api/search", async (req, res) => {
                     let: { lat: "$lat", lng: "$lng" },
                     pipeline: [
                         // On ne garde que les POI du type demandé
-                        { $match: { type: poiType } },
+                        { $match: { "properties.type": poiType } },
                         {
                             // Calcul de la distance approximative en mètres
                             $match: {
@@ -72,7 +72,7 @@ app.get("/api/search", async (req, res) => {
                             }
                         },
                         // Projette uniquement les champs utiles pour le tableau HTML
-                        { $project: { _id: 0, nom: 1, theme: 1, "address.streetAddress": 1 } }
+                        { $project: { _id: 0, "properties.nom": 1, "properties.theme": 1, "properties.address.streetAddress": 1 } }
                     ],
                     as: "pois"
                 }

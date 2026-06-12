@@ -82,10 +82,10 @@
         for (const station of data) {
             // Sous-tableau des POI pour cette station
             const poiRows = station.pois.map(p => {
-                const themes = (p.theme || []).join(', ') || '-';
-                const addr   = (p.address && p.address.streetAddress) ? p.address.streetAddress : '-';
+                const themes = (p.properties && p.properties.theme || []).join(', ') || '-';
+                const addr   = (p.properties && p.properties.address && p.properties.address.streetAddress) ? p.properties.address.streetAddress : '-';
                 return `<tr>
-                    <td>${p.nom || '-'}</td>
+                    <td>${(p.properties && p.properties.nom) || '-'}</td>
                     <td>${themes}</td>
                     <td>${addr}</td>
                 </tr>`;

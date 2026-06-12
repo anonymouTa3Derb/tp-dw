@@ -18,14 +18,18 @@ db.touristPOI_c.aggregate([
 ])
 ```
 
-Après cette requête, chaque document de `touristPOI` a la structure :
+Après cette requête, chaque document de `touristPOI` a la structure GeoJSON Feature :
 ```json
 {
-  "type": "RESTAURATION",
-  "nom": "Brasserie de L'Est",
-  "theme": ["Restaurants & Gastronomie"],
-  "address": { "streetAddress": "...", "postalCode": "69001" },
-  "geometry": { "type": "Point", "coordinates": [4.835, 45.762] }
+  "type": "Feature",
+  "geometry": { "type": "Point", "coordinates": [4.835, 45.762] },
+  "properties": {
+    "type": "RESTAURATION",
+    "nom": "Brasserie de L'Est",
+    "theme": ["Restaurants & Gastronomie"],
+    "address": { "streetAddress": "...", "postalCode": "69001" },
+    ...
+  }
 }
 ```
 
@@ -35,7 +39,7 @@ Après cette requête, chaque document de `touristPOI` a la structure :
 
 **Requête MongoDB :**
 ```js
-db.touristPOI.distinct("type")
+db.touristPOI.distinct("properties.type")
 ```
 
 **Résultats obtenus :**
@@ -61,11 +65,11 @@ db.touristPOI.distinct("type")
 **Requête MongoDB :**
 ```js
 db.touristPOI.aggregate([
-  { $unwind: "$theme" },
+  { $unwind: "$properties.theme" },
   {
     $group: {
-      _id: "$type",
-      distinctThemes: { $addToSet: "$theme" }
+      _id: "$properties.type",
+      distinctThemes: { $addToSet: "$properties.theme" }
     }
   },
   { $addFields: { themeCount: { $size: "$distinctThemes" } } },
@@ -94,7 +98,7 @@ db.touristPOI.aggregate([
   {
     $lookup: {
       from: "velov2026",
-      localField: "address.streetAddress",
+      localField: "properties.address.streetAddress",
       foreignField: "address",
       as: "stationsMemesRue"
     }
@@ -103,9 +107,9 @@ db.touristPOI.aggregate([
   {
     $project: {
       _id: 0,
-      nom: 1,
-      type: 1,
-      "address.streetAddress": 1,
+      "properties.nom": 1,
+      "properties.type": 1,
+      "properties.address.streetAddress": 1,
       stationsMemesRue: { $slice: ["$stationsMemesRue", 2] }
     }
   }
@@ -115,9 +119,11 @@ db.touristPOI.aggregate([
 **Résultat (exemple) :**
 ```json
 {
-  "nom": "Gare Part-Dieu",
-  "type": "EQUIPEMENT",
-  "address": { "streetAddress": "5 Place Charles Béraudier" },
+  "properties": {
+    "nom": "Gare Part-Dieu",
+    "type": "EQUIPEMENT",
+    "address": { "streetAddress": "5 Place Charles Béraudier" }
+  },
   "stationsMemesRue": [{ "name": "Station Béraudier", "commune": "Lyon 3ème Arrondissement" }]
 }
 ```
@@ -160,7 +166,7 @@ db.velov2026.aggregate([
             }
           }
         },
-        { $project: { _id: 0, nom: 1, type: 1 } }
+        { $project: { _id: 0, "properties.nom": 1, "properties.type": 1 } }
       ],
       as: "poisProches"
     }
@@ -176,8 +182,8 @@ db.velov2026.aggregate([
   "name": "Hôtel de Ville - Louis Pradel",
   "commune": "Lyon 1er Arrondissement",
   "poisProches": [
-    { "nom": "Brasserie Georges", "type": "RESTAURATION" },
-    { "nom": "Opéra de Lyon", "type": "PATRIMOINE_CULTUREL" }
+    { "properties": { "nom": "Brasserie Georges", "type": "RESTAURATION" } },
+    { "properties": { "nom": "Opéra de Lyon", "type": "PATRIMOINE_CULTUREL" } }
   ]
 }
 ```
@@ -196,7 +202,7 @@ db.velov2026.aggregate([
       from: "touristPOI",
       let: { lat: "$lat", lng: "$lng" },
       pipeline: [
-        { $match: { type: "RESTAURATION" } },
+        { $match: { "properties.type": "RESTAURATION" } },
         {
           $match: {
             $expr: {
